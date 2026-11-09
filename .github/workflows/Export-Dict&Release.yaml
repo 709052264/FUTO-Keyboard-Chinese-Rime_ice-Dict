@@ -1,9 +1,6 @@
 name: Export RIME Dict & Release
 
 on:
-  # 注释掉 push，完全改为手动触发
-  # push:
-  #   branches: [ main ]
   workflow_dispatch:
     inputs:
       version:
@@ -28,12 +25,16 @@ jobs:
         run: chmod +x export.sh
 
       - name: Run export.sh
+        id: export
         run: |
-          # 如果手动输入了 version 就用输入的，否则用运行序号
+          # 计算版本号
           VERSION="${{ github.event.inputs.version }}"
           if [ -z "$VERSION" ]; then
             VERSION="custom-${GITHUB_RUN_NUMBER}"
           fi
+          
+          # 存入环境变量，供后续步骤使用
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
           
           echo "Using version: $VERSION"
           ./export.sh "$VERSION"
@@ -50,12 +51,11 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          # Tag 和 Release 标题也会使用这个版本号
-          tag_name: "dict-${{ github.event.inputs.version || github.run_number }}"
-          name: "FUTO Dictionary - ${{ github.event.inputs.version || github.run_number }}"
+          tag_name: "dict-${{ env.VERSION }}"
+          name: "FUTO Dictionary - ${{ env.VERSION }}"
           body: |
             Automated dictionary export from commit ${{ github.sha }}
-            Version: ${{ github.event.inputs.version || 'custom-' + github.run_number }}
+            Version: ${{ env.VERSION }}
           draft: false
           prerelease: false
           files: dict/*.dict
