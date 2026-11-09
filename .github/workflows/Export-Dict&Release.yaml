@@ -1,0 +1,50 @@
+name: Export RIME Dict & Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Grant execute permission for export.sh
+        run: chmod +x export.sh
+
+      - name: Run export.sh
+        run: |
+          # 使用运行序号作为版本号，避免重复
+          VERSION="custom-${GITHUB_RUN_NUMBER}"
+          echo "Using version: $VERSION"
+          ./export.sh "$VERSION"
+          echo "=== Generated files ==="
+          ls -la dict/
+
+      - name: Verify dict file exists
+        run: |
+          if [ -z "$(ls -A dict/*.dict 2>/dev/null)" ]; then
+            echo "No .dict file found!"
+            exit 1
+          fi
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "dict-v${GITHUB_RUN_NUMBER}"
+          name: "FUTO Dictionary Build ${GITHUB_RUN_NUMBER}"
+          body: |
+            Automated dictionary export from commit ${{ github.sha }}
+            Version: custom-${GITHUB_RUN_NUMBER}
+          draft: false
+          prerelease: false
+          files: dict/*.dict
