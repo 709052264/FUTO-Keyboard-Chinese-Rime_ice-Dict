@@ -64,3 +64,10 @@ jobs:
           draft: false
           prerelease: false
           files: dict/rime_ice.dict  # 👈 改成固定名字
+
+      - name: Trigger FUTO Keyboard Build
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          repository: 709052264/futo-keyboard # 👈 你的目标仓库
+          token: ${{ secrets.PAT_TOKEN }}     # 👈 需要在仓库 A 配置 PAT_TOKEN
+          event-type: new-dict-available      # 👈 触发信号
