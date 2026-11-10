@@ -78,7 +78,7 @@ jobs:
         with:
           repository: 709052264/futo-keyboard
           token: ${{ secrets.PAT_TOKEN }} # 使用万能钥匙 PAT_TOKEN
-          ref: main                       # 目标仓库分支
+          ref: master                       # 目标仓库分支
           path: target-repo               # 拉取到 target-repo 目录下
 
       - name: Copy Dict and Push to Repo B
