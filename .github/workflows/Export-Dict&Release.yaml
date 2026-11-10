@@ -63,4 +63,4 @@ jobs:
             Version: ${{ env.VERSION }}
           draft: false
           prerelease: false
-          files: dict/*.dict
+          files: dict/rime_ice.dict  # 👈 改成固定名字
