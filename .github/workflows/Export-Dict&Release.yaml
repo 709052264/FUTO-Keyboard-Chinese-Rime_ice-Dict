@@ -7,6 +7,11 @@ on:
         description: '输入导出的版本名 (留空则自动生成)'
         required: false
         default: ''
+  # 👇【新增】当同步词库的 Action 运行完成后，自动触发此 Action
+  workflow_run:
+    workflows: ["Sync Rime Ice Dicts"] # 注意：必须和第一个 Action 的 name 完全一致
+    types:
+      - completed
 
 permissions:
   contents: write
