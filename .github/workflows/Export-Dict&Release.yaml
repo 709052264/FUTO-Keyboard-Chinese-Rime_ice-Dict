@@ -7,7 +7,7 @@ on:
         description: '输入导出的版本名 (留空则自动生成)'
         required: false
         default: ''
-  # 👇【新增】当同步词库的 Action 运行完成后，自动触发此 Action
+  # 当同步词库的 Action 运行完成后，自动触发此 Action
   workflow_run:
     workflows: ["Sync Rime Ice Dicts"] # 注意：必须和第一个 Action 的 name 完全一致
     types:
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - name: Checkout
+      - name: Checkout Repo A
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -38,18 +38,22 @@ jobs:
             VERSION="custom-${GITHUB_RUN_NUMBER}"
           fi
           
-          # 存入环境变量，供后续步骤使用
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          
           echo "Using version: $VERSION"
+          
           ./export.sh "$VERSION"
+          
+          # 👇【关键修复】：将生成的文件统一重命名为 rime_ice.dict，方便固定下载链接
+          echo "Renaming generated dict to rime_ice.dict..."
+          mv dict/*.dict dict/rime_ice.dict
+          
           echo "=== Generated files ==="
           ls -la dict/
 
       - name: Verify dict file exists
         run: |
-          if [ -z "$(ls -A dict/*.dict 2>/dev/null)" ]; then
-            echo "No .dict file found!"
+          if [ ! -f "dict/rime_ice.dict" ]; then
+            echo "No dict/rime_ice.dict file found!"
             exit 1
           fi
 
@@ -63,11 +67,42 @@ jobs:
             Version: ${{ env.VERSION }}
           draft: false
           prerelease: false
-          files: dict/rime_ice.dict  # 👈 改成固定名字
+          files: dict/rime_ice.dict # 👈 使用固定文件名上传
 
-      - name: Trigger FUTO Keyboard Build
-        uses: peter-evans/repository-dispatch@v3
+      # ==========================================
+      # 👇 下面是同步到仓库 B 的步骤
+      # ==========================================
+      
+      - name: Checkout Target Repo (futo-keyboard)
+        uses: actions/checkout@v4
         with:
-          repository: 709052264/futo-keyboard # 👈 你的目标仓库
-          token: ${{ secrets.PAT_TOKEN }}     # 👈 需要在仓库 A 配置 PAT_TOKEN
-          event-type: new-dict-available      # 👈 触发信号
+          repository: 709052264/futo-keyboard
+          token: ${{ secrets.PAT_TOKEN }} # 使用万能钥匙 PAT_TOKEN
+          ref: main                       # 目标仓库分支
+          path: target-repo               # 拉取到 target-repo 目录下
+
+      - name: Copy Dict and Push to Repo B
+        run: |
+          cd target-repo
+          
+          # 1. 确保目标目录存在（防止因为目录结构变动报错）
+          mkdir -p java/assets
+          
+          # 2. 覆盖目标仓库的词典文件
+          echo "Copying rime_ice.dict to java/assets/builtin.dict..."
+          cp ../dict/rime_ice.dict java/assets/builtin.dict
+          
+          # 3. 配置 Git 信息
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # 4. 检查是否有变化，有变化才提交（防止空跑报错）
+          if git diff --quiet java/assets/builtin.dict; then
+            echo "No changes in builtin.dict. Skipping push."
+          else
+            echo "Dictionary updated! Committing and pushing to Repo B..."
+            git add java/assets/builtin.dict
+            git commit -m "chore: auto-update builtin dict from Repo A release (v${{ env.VERSION }})"
+            git push
+            echo "Push successful! This should trigger the build action in Repo B."
+          fi
