@@ -52,7 +52,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "dict-${{ env.VERSION }}"
-          name: "FUTO Chinese Dict Rime_Ice - ${{ env.VERSION }}"
+          name: "FUTO Keyboard Chinese Dict Rime_Ice - ${{ env.VERSION }}"
           body: |
             Automated dictionary export from commit ${{ github.sha }}
             Version: ${{ env.VERSION }}
